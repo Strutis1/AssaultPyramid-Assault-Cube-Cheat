@@ -4,14 +4,6 @@
 #include <vector>
 
 
-DWORD getPtrAddress(DWORD ptr, std::vector<DWORD> offsets){
-    DWORD address = ptr;
-    for (int i = 0; i < offsets.size(); ++i) {
-        address = *(DWORD*) address;
-        address += offsets[i];
-    }
-    return address;
-}
 
 DWORD WINAPI CoolThread(HMODULE hModule){
     AllocConsole();
@@ -19,7 +11,6 @@ DWORD WINAPI CoolThread(HMODULE hModule){
     printf("Internal test");
 
     Sleep(2000);
-    FreeConsole();
 
     DWORD moduleBase = (DWORD)GetModuleHandle(TEXT("ac_client.exe"));
     if (!moduleBase) {
@@ -28,18 +19,36 @@ DWORD WINAPI CoolThread(HMODULE hModule){
     }
 
     while(!GetAsyncKeyState(VK_NUMPAD0)){
-       int* health = (int*)getPtrAddress(moduleBase + mem::Health, mem::health_offsets);
-       *health = 1000;
-       printf("Changing Health");
-       int* ammo = (int*)getPtrAddress(moduleBase + mem::Ammo, mem::ammo_offsets);
-       *ammo = 1000;
-       printf("Changing Ammo");
-    }
+        DWORD localPlayer = *(DWORD*)(moduleBase + mem::LocalPlayer);
 
-    if(GetAsyncKeyState(VK_NUMPAD0)){
-        fclose(console);
-    }
+        if (!localPlayer) {
+            std::cout << "[-] Local Player Pointer is NULL! Skipping...\n";
+            Sleep(100);
+            continue;
+        }
 
+
+        int* health = (int*) (localPlayer + mem::Health_Value);
+        if (health) {
+            *health = 1000;
+            std::cout << "[+] Health Changed to 1000\n";
+        } else {
+            std::cout << "[-] Failed to get Health Pointer!\n";
+        }
+
+
+        int* ammo = (int*)(localPlayer + mem::Submachine_Gun_Ammo);
+        if (ammo) {
+            *ammo = 1000;
+            std::cout << "[+] Ammo Changed to 1000\n";
+        } else {
+            std::cout << "[-] Failed to get Ammo Pointer!\n";
+        }
+        Sleep(20);
+    }
+    std::cout<<"Exiting...";
+    fclose(console);
+    FreeConsole();
     FreeLibraryAndExitThread(hModule, 0);
     return 0;
 }
